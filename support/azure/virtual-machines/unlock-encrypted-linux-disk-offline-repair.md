@@ -158,17 +158,17 @@ To unlock and mount the encrypted disk manually, follow these steps:
 
 ### Identify the ADE key file
 
-You must have both the key file and the header file to unlock the encrypted disk. The key file is stored in the BEK volume, and the header file is in the boot partition of the encrypted OS disk.
+You must have both the key file and the header file to unlock the encrypted disk. The key file is stored in the BEK volume, and the header file is in the boot partition of the encrypted OS disk. There could be multiple LinuxPassPhraseFileName if there are more than one disks attached to the encrypted VM. The LinuxPassPhraseFileName will be enumerated in accordance with the number of disks attached with the VM in the similar order as their LUN numbers.
 
 1. Determine which partition is the BEK volume:
 
    ```bash
    lsblk -fs | grep -i bek 
    ```
-   The following example output indicates that sdb1 is the BEK volume:
+   The following example output indicates that sdc1 is the BEK volume:
 
    ```output
-   >sdb1  vfat   BEK VOLUME      04A2-FE67 
+   >sdc1  vfat   BEK VOLUME      04A2-FE67 
    ```
 
    If no BEK volume exists, re-create the repair VM by having the encrypted disk attached. If the BEK volume still does not attach automatically, [try Method 3](#method3) to retrieve the BEK volume.
@@ -177,9 +177,9 @@ You must have both the key file and the header file to unlock the encrypted disk
    ```bash
    mkdir /mnt/azure_bek_disk 
    ```
-1. Mount the BEK volume in the "/mnt/azure_bek_disk" directory. For example, if sdb1 is the BEK volume, enter the following command: 
+1. Mount the BEK volume in the "/mnt/azure_bek_disk" directory. For example, if sdc1 is the BEK volume, enter the following command: 
    ```bash
-   mount /dev/sdb1 /mnt/azure_bek_disk 
+   mount /dev/sdc1 /mnt/azure_bek_disk 
    ```
 1. List the available devices again:
    ```bash
@@ -207,23 +207,23 @@ The boot partition of the encrypted disk contains the header file. You'll use th
    ```bash
    lsblk -o NAME,SIZE,LABEL,PARTLABEL,MOUNTPOINT
    ```
-1. On the encrypted disk, identify the OS partition (root partition). This is the largest partition on the encrypted disk. In the previous example output, the OS partition is "sda4." This partition must be specified when you run the unlock command.
+1. On the encrypted disk, identify the OS partition (root partition). This is the largest partition on the encrypted disk. In the previous example output, the OS partition is "sdd4." This partition must be specified when you run the unlock command.
 3. In the root directory ("/") of the file structure, create a directory to which to mount the root partition of the encrypted disk. You'll use this directory later, after the disk is unlocked. To distinguish it from the active OS partition of the repair VM, give it the name "investigateroot".
 
    ```bash
    mkdir /{investigateboot,investigateroot}
    ```
-1. On the encrypted disk, identify the boot partition, which contains the header file. On the encrypted disk, the boot partition is the second largest partition that shows no value in the LABEL or PARTLABEL column. In the previous example output, the boot partition of the encrypted disk is "sda2." 
+1. On the encrypted disk, identify the boot partition, which contains the header file. On the encrypted disk, the boot partition is the second largest partition that shows no value in the LABEL or PARTLABEL column. In the previous example output, the boot partition of the encrypted disk is "sdd2." 
 
-1. Mount the boot partition that you identified in step 4 into the /investigateboot/ directory. In the following example, the boot partition of the encrypted disk is sda2. However, the location on your system might differ.
+1. Mount the boot partition that you identified in step 4 into the /investigateboot/ directory. In the following example, the boot partition of the encrypted disk is sdd2. However, the location on your system might differ.
 
    ```bash
-   mount /dev/sda2 /investigateboot/ 
+   mount /dev/sdd2 /investigateboot/ 
    ```
    If mounting the partition fails and returns a "wrong fs type, bad option, bad superblock" error message, try again by using the `mount -o nouuid` command, as in the following example:
 
    ```bash
-   mount -o nouuid /dev/sda2 /investigateboot/ 
+   mount -o nouuid /dev/sdd2 /investigateboot/ 
    ```
 1. List the files that are in the /investigateboot/ directory. The "luks" subdirectory contains the header file that you must have to unlock the disk.
 
@@ -235,10 +235,10 @@ The boot partition of the encrypted disk contains the header file. You'll use th
 
 ### <a name="unlock-by-files"></a> Use the ADE key file and the header file to unlock the disk
 
-1. Use the `cryptsetup luksOpen` command to unlock the root partition on the encrypted disk. For example, if the path to the root partition that contains the encrypted OS is /dev/sda4, and you want to assign the name "osencrypt" to the unlocked partition, run the following command:
+1. Use the `cryptsetup luksOpen` command to unlock the root partition on the encrypted disk. For example, if the path to the root partition that contains the encrypted OS is /dev/sdd4, and you want to assign the name "osencrypt" to the unlocked partition, run the following command:
 
    ```bash
-   cryptsetup luksOpen --key-file /mnt/azure_bek_disk/LinuxPassPhraseFileName --header /investigateboot/luks/osluksheader /dev/sda4 osencrypt 
+   cryptsetup luksOpen --key-file /mnt/azure_bek_disk/LinuxPassPhraseFileName --header /investigateboot/luks/osluksheader /dev/sdd4 osencrypt 
    ```
 1. Now that you have unlocked the disk, unmount the encrypted disk's boot partition from the /investigateboot/ directory: 
 
@@ -297,14 +297,14 @@ Import the newly unlocked partition into a new volume group. In this example, we
 
    However, if you want to use the chroot utility for troubleshooting, continue by using the following steps.
 
-7. Mount the encrypted disk's boot partition to the directory /investigateroot/boot/ without using the duplicate UUIDs. (Remember that the encrypted disk's boot partition is the second largest that's assigned no partition label.) In our current example, the encrypted disk's boot partition is sda2.
+7. Mount the encrypted disk's boot partition to the directory /investigateroot/boot/ without using the duplicate UUIDs. (Remember that the encrypted disk's boot partition is the second largest that's assigned no partition label.) In our current example, the encrypted disk's boot partition is sdd2.
 
    ```bash
-   mount -o nouuid /dev/sda2 /investigateroot/boot
+   mount -o nouuid /dev/sdd2 /investigateroot/boot
    ```
-1. Mount the encrypted disk's EFI system partition to the /investigateroot/boot/efi directory. You can identify this partition by its label. In our current example, the EFI system partition is sda1.
+1. Mount the encrypted disk's EFI system partition to the /investigateroot/boot/efi directory. You can identify this partition by its label. In our current example, the EFI system partition is sdd1.
    ```bash
-   mount /dev/sda1 /investigateroot/boot/efi
+   mount /dev/sdd1 /investigateroot/boot/efi
    ```
 1. Mount the remaining unmounted logical volumes in the encrypted disk's volume group to subdirectories of "/investigateroot/":
    ```bash
@@ -372,7 +372,7 @@ Import the newly unlocked partition into a new volume group. In this example, we
 1. Mount the boot partition on the encrypted disk to the "/investigateroot/boot/" directory, as in the following example:
 
    ```bash
-   mount /dev/sdc2 /investigateroot/boot/ 
+   mount /dev/sdd2 /investigateroot/boot/ 
    ```
 
 1. Change the active directory to the mounted root partition on the encrypted disk:
@@ -385,13 +385,9 @@ Import the newly unlocked partition into a new volume group. In this example, we
 
    ```bash
    mount -t proc proc proc 
-
    mount -t sysfs sys sys/ 
-
    mount -o bind /dev dev/ 
-
    mount -o bind /dev/pts dev/pts/ 
-
    mount -o bind /run run/ 
    ```
 
